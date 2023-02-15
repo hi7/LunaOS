@@ -8,7 +8,7 @@ UEFI app written in Zig Version 0.11.0-dev
 Copy `efi/boot/bootx64.efi` to a FAT32 formatted device.
 
 # Run in Qemu on Fedora Linux
-`zig build run`
+`zig build run`  
 With `/usr/share/edk2/ovmf/OVMF_CODE.fd` as BIOS (see `build.zig` -> `run_cmd`).
 
 Or directly:
