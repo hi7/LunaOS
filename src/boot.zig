@@ -6,6 +6,6 @@ pub fn main() void {
     _ = con_out.reset(false);
     _ = con_out.outputString(L("LunaOS\r\n"));
     const boot_services = uefi.system_table.boot_services.?;
-    _ = boot_services.stall(5 * 1000 * 1000);
+    _ = boot_services.stall(5_000_000);
     // back to EFI
 }
