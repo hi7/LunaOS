@@ -38,12 +38,12 @@ fn fin() void {
 }
 
 fn lookup(buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) *Node {
-    var result = env.lookup(identifier) catch |err| {
-        print.printf(buf, "error: {}\r\n", .{err}, con_out);
+    var result = env.ground.lookup(identifier) catch |err| {
+        print.printf(buf, "Error: {}\r\n", .{err}, con_out);
         fin();
     };
     if(result == null) {
-        print.printf(buf, "symbol {s} is not in environment\r\n", .{identifier}, con_out);
+        print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{identifier}, con_out);
         fin();
     }
     return result.?;

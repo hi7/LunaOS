@@ -2,19 +2,27 @@ const std = @import("std");
 const ast = @import("ast.zig");
 const Node = ast.Node;
 
-var symbols: std.StringHashMap(*Node) = undefined;
+pub var ground: Environment = undefined;
+
+const Environment = struct {
+    symbols: std.StringHashMap(*Node),
+    fn deinit(self: *Environment) void {
+        self.symbols.deinit();
+    }
+    pub fn lookup(self: Environment, identifier: []const u8) !?*Node {
+        return self.symbols.get(identifier);
+    }
+};
 
 pub fn init(allocator: std.mem.Allocator) void {
-    symbols = std.StringHashMap(*Node).init(allocator);
-    symbols.put("+", &add) catch unreachable;
+    ground = Environment {
+        .symbols = std.StringHashMap(*Node).init(allocator),
+    };
+    ground.symbols.put("+", &add) catch unreachable;
 }
 
 pub fn deinit() void {
-    symbols.deinit();
-}
-
-pub fn lookup(identifier: []const u8) !?*Node {
-    return symbols.get(identifier);
+    ground.deinit();
 }
 
 var add = Node { 
