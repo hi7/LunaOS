@@ -6,9 +6,9 @@ const ast = @import("ast.zig");
 const Node = ast.Node;
 
 var add = [_]Node{ 
-    Node{ .symbol = "+"}, 
-    Node{ .int = 10}, 
-    Node{ .int = 32 }, 
+    Node{ .symbol = "+"},
+    Node{ .int = 10},
+    Node{ .int = 32 },
 };
 var spec = Node{ .list = &add };
 

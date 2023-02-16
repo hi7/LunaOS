@@ -2,6 +2,7 @@ const print = @import("print.zig");
 const bufPrintLen = print.bufPrintLen;
 
 pub const Node = union(enum) {
+    boolean: bool,
     int: i64,
     float: f64,
     symbol: []const u8,
@@ -12,6 +13,7 @@ pub const Node = union(enum) {
 pub fn outputAst(buf: []u8, i: usize, node: *Node) usize {
     var offset: usize = i;
     switch(node.*) {
+        .boolean => |boolean| offset += bufPrintLen(buf[offset..], "{s}", .{ if(boolean) "#t" else "#f"}),
         .int => |int| offset += bufPrintLen(buf[offset..], "{d}", .{int}),
         .float => |float| offset += bufPrintLen(buf[offset..], "{d}", .{float}),
         .symbol => |symbol| offset += bufPrintLen(buf[offset..], "{s}", .{symbol}),
