@@ -1,6 +1,7 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 const Node = ast.Node;
+const expect = std.testing.expect;
 
 pub var ground: Environment = undefined;
 
@@ -32,3 +33,13 @@ var add = Node {
         Node{ .int = 32 },
     }
 };
+
+test "lookup evironment" {
+    init(std.testing.allocator);
+    defer deinit();
+
+    try expect(try ground.lookup("-") == null);
+
+    const n2 = try ground.lookup("+");
+    try expect(n2.?.list.len == 3);
+}
