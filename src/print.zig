@@ -25,8 +25,8 @@ pub fn printf(buf: []u8, comptime format: []const u8, args: anytype, con_out: *S
 
 pub fn handleBufPrintError(err: error{NoSpaceLeft}, con_out: *SimpleTextOutputProtocol) void {
     if(err == std.fmt.BufPrintError.NoSpaceLeft) {
-        puts("printf error: No space left", con_out);
+        puts("bufPrint error: No space left", con_out);
         return;
     }
-    puts("printf failed", con_out);
+    puts("bufPrint failed", con_out);
 }
