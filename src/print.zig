@@ -17,10 +17,11 @@ pub fn puts(msg: []const u8, con_out: *SimpleTextOutputProtocol) void {
 }
 
 pub fn printf(buf: []u8, comptime format: []const u8, args: anytype, con_out: *SimpleTextOutputProtocol) void {
-    _ = std.fmt.bufPrint(buf, format, args) catch |err| {
+    const text = std.fmt.bufPrint(buf, format, args) catch |err| {
         handleBufPrintError(err, con_out);
+        return;
     };
-    puts(buf, con_out);
+    puts(text, con_out);
 }
 
 pub fn handleBufPrintError(err: error{NoSpaceLeft}, con_out: *SimpleTextOutputProtocol) void {

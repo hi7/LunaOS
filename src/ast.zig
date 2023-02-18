@@ -11,6 +11,15 @@ pub const Node = union(enum) {
     list: []const Node,
 };
 
+pub const NodeMutable = union(enum) {
+    boolean: bool,
+    int: i64,
+    float: f64,
+    symbol: []const u8,
+    string: []const u8,
+    list: []const NodeMutable,
+};
+
 pub fn outputAst(buf: []u8, i: usize, node: *Node) error{NoSpaceLeft}!usize {
     var offset: usize = i;
     switch(node.*) {

@@ -4,7 +4,7 @@ const unicode = std.unicode;
 const print = @import("print.zig");
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 const env = @import("env.zig");
-const Environment = env.Environment;
+const EnvironmentMutable = env.EnvironmentMutable;
 const ast = @import("ast.zig");
 const Node = ast.Node;
 
@@ -13,20 +13,21 @@ pub fn main() void {
     printHeader(con_out);
 
     var buf: [256]u8 = undefined;
-    var ground = env.createGround(std.os.uefi.pool_allocator) catch |err| {
+    var std_env = env.standardEnvironment(std.os.uefi.pool_allocator) catch |err| {
         print.printf(&buf, "Error: {}\r\n", .{err}, con_out);
         return;
     };
-    defer ground.deinit();
+    defer std_env.deinit();
 
-    printAst(ground, &buf, con_out);
+    printAst(std_env, &buf, con_out);
 
     fin();
 }
 
-fn printAst(environment: Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+fn printAst(environment: EnvironmentMutable, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
     var buffer = buf;
-    const len: usize = ast.outputAst(buffer, 0, lookup(environment, buffer, "+", con_out)) catch |err| {
+    const node = lookup(environment, buffer, "+", con_out).?;
+    const len: usize = ast.outputAst(buffer, 0, node) catch |err| {
         print.handleBufPrintError(err, con_out);
         return;
     };
@@ -45,14 +46,10 @@ fn fin() void {
     while (true) {}
 }
 
-fn lookup(environment: Environment, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) *Node {
-    var result = environment.lookup(identifier) catch |err| {
-        print.printf(buf, "Error: {}\r\n", .{err}, con_out);
-        fin();
-    };
+fn lookup(environment: EnvironmentMutable, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) ?*Node {
+    var result = environment.lookup(identifier);
     if(result == null) {
         print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{identifier}, con_out);
-        fin();
     }
-    return result.?;
+    return result;
 }
