@@ -10,22 +10,22 @@ pub const Node = union(enum) {
     list: []const Node,
 };
 
-pub fn outputAst(buf: []u8, i: usize, node: *Node) usize {
+pub fn outputAst(buf: []u8, i: usize, node: *Node) error{NoSpaceLeft}!usize {
     var offset: usize = i;
     switch(node.*) {
-        .boolean => |boolean| offset += bufPrintLen(buf[offset..], "{s}", .{ if(boolean) "#t" else "#f"}),
-        .int => |int| offset += bufPrintLen(buf[offset..], "{d}", .{int}),
-        .float => |float| offset += bufPrintLen(buf[offset..], "{d}", .{float}),
-        .symbol => |symbol| offset += bufPrintLen(buf[offset..], "{s}", .{symbol}),
-        .string => |string| offset += bufPrintLen(buf[offset..], "{s}", .{string}),
+        .boolean => |boolean| offset += try bufPrintLen(buf[offset..], "{s}", .{ if(boolean) "#t" else "#f"}),
+        .int => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
+        .float => |float| offset += try bufPrintLen(buf[offset..], "{d}", .{float}),
+        .symbol => |symbol| offset += try bufPrintLen(buf[offset..], "{s}", .{symbol}),
+        .string => |string| offset += try bufPrintLen(buf[offset..], "{s}", .{string}),
         .list => |list| {
-            offset += bufPrintLen(buf[offset..], "(", .{});
+            offset += try bufPrintLen(buf[offset..], "(", .{});
             for(list) |n, o| {
                 var vn = n;
-                offset += outputAst(buf[(offset)..], i, &vn);
-                if(o < (list.len - 1)) offset += bufPrintLen(buf[offset..], " ", .{});
+                offset += try outputAst(buf[(offset)..], i, &vn);
+                if(o < (list.len - 1)) offset += try bufPrintLen(buf[offset..], " ", .{});
             }
-            offset += bufPrintLen(buf[(offset)..], ")", .{});
+            offset += try bufPrintLen(buf[(offset)..], ")", .{});
         }
     }
     return offset;

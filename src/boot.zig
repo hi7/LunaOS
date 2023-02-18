@@ -11,17 +11,23 @@ pub fn main() void {
     const con_out = uefi.system_table.con_out.?;
     printHeader(con_out);
 
-    env.init(std.os.uefi.pool_allocator);
+    var buf: [256]u8 = undefined;
+    env.init(std.os.uefi.pool_allocator) catch |err| {
+        print.printf(&buf, "Error: {}\r\n", .{err}, con_out);
+    };
     defer env.deinit();
 
-    printAst(con_out);
+    printAst(&buf, con_out);
 
     fin();
 }
 
-fn printAst(con_out: *SimpleTextOutputProtocol) void {
-    var buf: [256]u8 = undefined;
-    const len = ast.outputAst(&buf, 0, lookup(&buf, "+", con_out));
+fn printAst(buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+    var buffer = buf;
+    const len: usize = ast.outputAst(buffer, 0, lookup(buffer, "+", con_out)) catch |err| {
+        print.handleBufPrintError(err, con_out);
+        return;
+    };
     print.puts(buf[0..len], con_out);
 }
 

@@ -15,11 +15,11 @@ const Environment = struct {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator) void {
+pub fn init(allocator: std.mem.Allocator) !void {
     ground = Environment {
         .symbols = std.StringHashMap(*Node).init(allocator),
     };
-    ground.symbols.put("+", &add) catch unreachable;
+    try ground.symbols.put("+", &add);
 }
 
 pub fn deinit() void {
@@ -35,7 +35,7 @@ var add = Node {
 };
 
 test "lookup evironment" {
-    init(std.testing.allocator);
+    try init(std.testing.allocator);
     defer deinit();
 
     try expect(try ground.lookup("-") == null);

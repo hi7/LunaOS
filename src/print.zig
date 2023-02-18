@@ -4,8 +4,8 @@ const unicode = std.unicode;
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 pub const L  = std.unicode.utf8ToUtf16LeStringLiteral;
 
-pub fn bufPrintLen(buf: []u8, comptime fmt: []const u8, args: anytype) usize {
-    const b = std.fmt.bufPrint(buf, fmt, args) catch unreachable;
+pub fn bufPrintLen(buf: []u8, comptime fmt: []const u8, args: anytype) error{NoSpaceLeft}!usize {
+    const b = try std.fmt.bufPrint(buf, fmt, args);
     return b.len;
 }
 
@@ -17,5 +17,16 @@ pub fn puts(msg: []const u8, con_out: *SimpleTextOutputProtocol) void {
 }
 
 pub fn printf(buf: []u8, comptime format: []const u8, args: anytype, con_out: *SimpleTextOutputProtocol) void {
-    puts(std.fmt.bufPrint(buf, format, args) catch unreachable, con_out);
+    _ = std.fmt.bufPrint(buf, format, args) catch |err| {
+        handleBufPrintError(err, con_out);
+    };
+    puts(buf, con_out);
+}
+
+pub fn handleBufPrintError(err: error{NoSpaceLeft}, con_out: *SimpleTextOutputProtocol) void {
+    if(err == std.fmt.BufPrintError.NoSpaceLeft) {
+        puts("printf error: No space left", con_out);
+        return;
+    }
+    puts("printf failed", con_out);
 }
