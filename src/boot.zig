@@ -4,6 +4,7 @@ const unicode = std.unicode;
 const print = @import("print.zig");
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 const env = @import("env.zig");
+const Environment = env.Environment;
 const ast = @import("ast.zig");
 const Node = ast.Node;
 
@@ -12,19 +13,20 @@ pub fn main() void {
     printHeader(con_out);
 
     var buf: [256]u8 = undefined;
-    env.init(std.os.uefi.pool_allocator) catch |err| {
+    var ground = env.createGround(std.os.uefi.pool_allocator) catch |err| {
         print.printf(&buf, "Error: {}\r\n", .{err}, con_out);
+        return;
     };
-    defer env.deinit();
+    defer ground.deinit();
 
-    printAst(&buf, con_out);
+    printAst(ground, &buf, con_out);
 
     fin();
 }
 
-fn printAst(buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+fn printAst(environment: Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
     var buffer = buf;
-    const len: usize = ast.outputAst(buffer, 0, lookup(buffer, "+", con_out)) catch |err| {
+    const len: usize = ast.outputAst(buffer, 0, lookup(environment, buffer, "+", con_out)) catch |err| {
         print.handleBufPrintError(err, con_out);
         return;
     };
@@ -43,8 +45,8 @@ fn fin() void {
     while (true) {}
 }
 
-fn lookup(buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) *Node {
-    var result = env.ground.lookup(identifier) catch |err| {
+fn lookup(environment: Environment, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) *Node {
+    var result = environment.lookup(identifier) catch |err| {
         print.printf(buf, "Error: {}\r\n", .{err}, con_out);
         fin();
     };

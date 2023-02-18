@@ -1,13 +1,15 @@
 const std = @import("std");
+const StringHashMap = std.StringHashMap;
 const ast = @import("ast.zig");
 const Node = ast.Node;
 const expect = std.testing.expect;
+const Allocator = std.mem.Allocator;
 
-pub var ground: Environment = undefined;
-
-const Environment = struct {
-    symbols: std.StringHashMap(*Node),
-    fn deinit(self: *Environment) void {
+// immutable
+pub const Environment = struct {
+    symbols: StringHashMap(*Node),
+    parents: []const Environment,
+    pub fn deinit(self: *Environment) void {
         self.symbols.deinit();
     }
     pub fn lookup(self: Environment, identifier: []const u8) !?*Node {
@@ -15,15 +17,17 @@ const Environment = struct {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator) !void {
-    ground = Environment {
-        .symbols = std.StringHashMap(*Node).init(allocator),
+pub fn createGround(allocator: Allocator) !Environment {
+    return Environment {
+        .parents = &[0]Environment{},
+        .symbols = try groundSymbols(allocator),
     };
-    try ground.symbols.put("+", &add);
 }
 
-pub fn deinit() void {
-    ground.deinit();
+fn groundSymbols(allocator: Allocator) !StringHashMap(*Node) {
+    var symbols = std.StringHashMap(*Node).init(allocator);
+    try symbols.put("+", &add);
+    return symbols;
 }
 
 var add = Node { 
@@ -34,9 +38,9 @@ var add = Node {
     }
 };
 
-test "lookup evironment" {
-    try init(std.testing.allocator);
-    defer deinit();
+test "lookup ground" {
+    var ground = try createGround(std.testing.allocator);
+    defer ground.deinit();
 
     try expect(try ground.lookup("-") == null);
 

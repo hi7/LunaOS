@@ -1,6 +1,7 @@
 const print = @import("print.zig");
 const bufPrintLen = print.bufPrintLen;
 
+// immutable
 pub const Node = union(enum) {
     boolean: bool,
     int: i64,
