@@ -13,8 +13,12 @@ pub fn main() void {
     printHeader(con_out);
 
     var buf: [256]u8 = undefined;
+    env.initGround(std.os.uefi.pool_allocator) catch |err| {
+        print.printf(&buf, "initGround error: {}\r\n", .{err}, con_out);
+        return;
+    };
     var std_env = env.standardEnvironment(std.os.uefi.pool_allocator) catch |err| {
-        print.printf(&buf, "Error: {}\r\n", .{err}, con_out);
+        print.printf(&buf, "standardEnvironment error: {}\r\n", .{err}, con_out);
         return;
     };
     defer std_env.deinit();

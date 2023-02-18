@@ -17,6 +17,12 @@ const Environment = union(enum) {
             .mutable => return self.mutable.symbols.get(identifier),
         }        
     }
+    pub fn deinit(self: Environment) void {
+        switch(self) {
+            .immutable => return self.immutable.deinit(),
+            .mutable => return self.mutable.deinit(),
+        }
+    }
 };
 
 const EnvironmentImmutable = struct {
@@ -35,9 +41,6 @@ pub const EnvironmentMutable = struct {
     parents: ArrayList(Environment),
     pub fn init(allocator: Allocator) Allocator.Error!EnvironmentMutable {
         var p = ArrayList(Environment).init(allocator);
-        if(ground == null) { // lazy init
-            ground = try createGround(allocator);
-        }
         try p.append(Environment{ .immutable = ground.? });
         return EnvironmentMutable{
             .symbols = StringHashMap(*Node).init(allocator),
@@ -46,6 +49,7 @@ pub const EnvironmentMutable = struct {
     }
     pub fn deinit(self: *EnvironmentMutable) void {
         self.symbols.deinit();
+        self.parents.deinit();
     }
     pub fn lookup(self: EnvironmentMutable, identifier: []const u8) ?*Node {
         if(self.symbols.count() == 0) {
@@ -62,8 +66,8 @@ pub fn standardEnvironment(allocator: Allocator) Allocator.Error!EnvironmentMuta
     return EnvironmentMutable.init(allocator);
 }
 
-fn createGround(allocator: Allocator) Allocator.Error!EnvironmentImmutable {
-    return EnvironmentImmutable {
+pub fn initGround(allocator: Allocator) Allocator.Error!void {
+    ground = EnvironmentImmutable {
         .parents = &[0]Environment{},
         .symbols = try groundSymbols(allocator),
     };
@@ -84,12 +88,24 @@ var add = Node {
 };
 
 test "lookup ground" {
-    ground = try createGround(std.testing.allocator);
+    try initGround(std.testing.allocator);
     var g = ground.?;
     defer g.deinit();
 
     try expect(g.lookup("-") == null);
 
     const n2 = g.lookup("+");
+    try expect(n2.?.list.len == 3);
+}
+
+test "lookup standard environment" {
+    try initGround(std.testing.allocator);
+    defer ground.?.deinit();
+    var std_env = try standardEnvironment(std.testing.allocator);
+    defer std_env.deinit();
+
+    try expect(std_env.lookup("-") == null);
+
+    const n2 = std_env.lookup("+");
     try expect(n2.?.list.len == 3);
 }
