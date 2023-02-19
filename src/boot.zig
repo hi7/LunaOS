@@ -4,7 +4,7 @@ const unicode = std.unicode;
 const print = @import("print.zig");
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 const env = @import("env.zig");
-const EnvironmentMutable = env.EnvironmentMutable;
+const Environment = env.Environment;
 const ast = @import("ast.zig");
 const Node = ast.Node;
 
@@ -17,21 +17,21 @@ pub fn main() void {
         print.printf(&buf, "initGround error: {}\r\n", .{err}, con_out);
         return;
     };
-    var std_env = env.standardEnvironment(std.os.uefi.pool_allocator) catch |err| {
+    var e = env.standardEnvironment(std.os.uefi.pool_allocator) catch |err| {
         print.printf(&buf, "standardEnvironment error: {}\r\n", .{err}, con_out);
         return;
     };
-    defer std_env.deinit();
+    defer e.deinit();
 
-    printAst(std_env, &buf, con_out);
+    printAst(e, &buf, con_out);
 
     fin();
 }
 
-fn printAst(environment: EnvironmentMutable, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+fn printAst(environment: Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
     var buffer = buf;
     const node = lookup(environment, buffer, "+", con_out).?;
-    const len: usize = ast.outputAst(buffer, 0, node) catch |err| {
+    const len: usize = ast.writeBuf(buffer, node, 0) catch |err| {
         print.handleBufPrintError(err, con_out);
         return;
     };
@@ -43,17 +43,17 @@ fn printHeader(con_out: *SimpleTextOutputProtocol) void {
     _ = con_out.outputString(print.L("LunaOS\r\n\n"));
 }
 
-fn fin() void {
-    const boot_services = uefi.system_table.boot_services.?;
-    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
-    //_ = boot_services.stall(5_000_000);
-    while (true) {}
-}
-
-fn lookup(environment: EnvironmentMutable, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) ?*Node {
+fn lookup(environment: Environment, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) ?*Node {
     var result = environment.lookup(identifier);
     if(result == null) {
         print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{identifier}, con_out);
     }
     return result;
+}
+
+fn fin() void {
+    const boot_services = uefi.system_table.boot_services.?;
+    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
+    //_ = boot_services.stall(5_000_000);
+    while (true) {}
 }
