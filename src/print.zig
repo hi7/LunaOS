@@ -11,8 +11,8 @@ pub fn bufPrintLen(buf: []u8, comptime fmt: []const u8, args: anytype) error{NoS
 
 pub fn puts(msg: []const u8, con_out: *SimpleTextOutputProtocol) void {
     for (msg) |c| {
-        const cu16 = [2]u16{ c, 0 };
-        _ = con_out.outputString(@ptrCast(*const [1:0]u16, &cu16));
+        const ucs2 = [2]u16{ c, 0 };
+        _ = con_out.outputString(@ptrCast(*const [1:0]u16, &ucs2));
     }
 }
 
