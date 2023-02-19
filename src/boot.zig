@@ -17,8 +17,8 @@ pub fn main() void {
         print.printf(&buf, "initGround error: {}\r\n", .{err}, con_out);
         return;
     };
-    var e = env.standardEnvironment(std.os.uefi.pool_allocator) catch |err| {
-        print.printf(&buf, "standardEnvironment error: {}\r\n", .{err}, con_out);
+    var e = Environment.std(std.os.uefi.pool_allocator) catch |err| {
+        print.printf(&buf, "standard environment error: {}\r\n", .{err}, con_out);
         return;
     };
     defer e.deinit();

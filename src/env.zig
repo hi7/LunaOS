@@ -7,78 +7,70 @@ const expectEqual = std.testing.expectEqual;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-var ground: ?EnvironmentImmutable = null;
+var ground: ?Environment = null;
 
-pub const Environment = union(enum) {
-    immutable: EnvironmentImmutable,
-    mutable: EnvironmentMutable,
-    pub fn symbols(self:Environment) StringHashMap(*Node) {
-        return switch(self) {
-            .immutable => self.immutable.symbols,
-            .mutable => self.mutable.symbols,
+const EnvironmentError = error{ 
+    EnvironmentIsImmutable,
+    OutOfMemory,
+    GroundNotInitialized,
+};
+
+pub const Environment = struct {
+    symbols: StringHashMap(*Node),
+    parents: ?ArrayList(Environment),
+    mutable: bool,
+    pub fn grd(allocator: Allocator) EnvironmentError!Environment {
+        return Environment{
+            .parents = null,
+            .symbols = try groundSymbols(allocator),
+            .mutable = false,
         };
     }
-    pub fn parents(self:Environment) []Environment {
-        return switch(self) {
-            .immutable => self.immutable.parents,
-            .mutable => self.mutable.parents.items,
+    pub fn std(allocator: Allocator) EnvironmentError!Environment {
+        var p = ArrayList(Environment).init(allocator);
+        if(ground == null) return EnvironmentError.GroundNotInitialized;
+        try p.append(ground.?);
+        return Environment{
+            .symbols = StringHashMap(*Node).init(allocator),
+            .parents = p,
+            .mutable = true,
         };
+    }
+    pub fn initImmutable(symbols: StringHashMap(*Node), parents: ArrayList(Environment)) Allocator.Error!Environment {
+        return Environment{
+            .symbols = symbols,
+            .parents = parents,
+            .mutable = false,
+        };
+    }
+    pub fn deinit(self: *Environment) void {
+        self.symbols.deinit();
+        if(self.parents != null) self.parents.?.deinit();
+    }
+    pub fn defineMut(self: Environment, identifier: []const u8, node: *Node) EnvironmentError!void {
+        if(!self.mutable) return EnvironmentError.EnvironmentIsImmutable;
+        var s = self.symbols;
+        try s.put(identifier, node);
     }
     pub fn lookup(self: Environment, identifier: []const u8) ?*Node {
-        var s = self.symbols();
+        var s = self.symbols;
         if(s.count() > 0) {
             const local = s.get(identifier);
             if(local != null) return local;
         }
-        var p = self.parents();
-        for(p) |parent| {
-            const result = parent.lookup(identifier);
-            if(result != null) return result;
+        var p = self.parents;
+        if(p != null) {
+            for(p.?.items) |parent| {
+                const result = parent.lookup(identifier);
+                if(result != null) return result;
+            }
         }
         return null;
     }
-    pub fn deinit(self: *Environment) void {
-        switch(self.*) {
-            .immutable => self.immutable.deinit(),
-            .mutable => self.mutable.deinit(),
-        }
-    }
 };
 
-const EnvironmentImmutable = struct {
-    symbols: StringHashMap(*Node),
-    parents: []Environment,
-    pub fn deinit(self: *EnvironmentImmutable) void {
-        self.symbols.deinit();
-    }
-};
-
-pub const EnvironmentMutable = struct {
-    symbols: StringHashMap(*Node),
-    parents: ArrayList(Environment),
-    pub fn init(allocator: Allocator) Allocator.Error!EnvironmentMutable {
-        var p = ArrayList(Environment).init(allocator);
-        try p.append(Environment{ .immutable = ground.? });
-        return EnvironmentMutable{
-            .symbols = StringHashMap(*Node).init(allocator),
-            .parents = p,
-        };
-    }
-    pub fn deinit(self: *EnvironmentMutable) void {
-        self.symbols.deinit();
-        self.parents.deinit();
-    }
-};
-
-pub fn standardEnvironment(allocator: Allocator) Allocator.Error!Environment {
-    return Environment{ .mutable = try EnvironmentMutable.init(allocator) };
-}
-
-pub fn initGround(allocator: Allocator) Allocator.Error!void {
-    ground = EnvironmentImmutable {
-        .parents = &[0]Environment{},
-        .symbols = try groundSymbols(allocator),
-    };
+pub fn initGround(allocator: Allocator) EnvironmentError!void {
+    ground = try Environment.grd(allocator);
 }
 
 fn groundSymbols(allocator: Allocator) Allocator.Error!StringHashMap(*Node) {
@@ -95,9 +87,9 @@ pub var add = Node {
     }
 };
 
-pub fn testStdEnv() Allocator.Error!Environment {
-    try initGround(std.testing.allocator);
-    return try standardEnvironment(std.testing.allocator);
+pub fn testStdEnv() EnvironmentError!Environment {
+    ground = try Environment.grd(std.testing.allocator);
+    return try Environment.std(std.testing.allocator);
 }
 
 pub fn testDeinitEnv(environment: *Environment) void {
@@ -106,14 +98,11 @@ pub fn testDeinitEnv(environment: *Environment) void {
 }
 
 test "lookup ground" {
-    try initGround(std.testing.allocator);
-    var g = ground.?;
-    defer g.deinit();
-    var e = Environment{ .immutable = g };
+    ground = try Environment.grd(std.testing.allocator);
+    defer ground.?.deinit();
 
-    try expect(e.lookup("-") == null);
-
-    const n2 = e.lookup("+");
+    try expect(ground.?.lookup("-") == null);
+    const n2 = ground.?.lookup("+");
     try expect(n2.?.list.len == 3);
 }
 
@@ -122,7 +111,6 @@ test "standard environment lookup" {
     defer testDeinitEnv(&e);
 
     try expect(e.lookup("-") == null);
-
     const n2 = e.lookup("+");
     try expect(n2.?.list.len == 3);
 }
@@ -132,19 +120,18 @@ test "environment lookup" {
     defer testDeinitEnv(&e);
 
     try expect(e.lookup("-") == null);
-
     const n2 = e.lookup("+");
     try expect(n2.?.list.len == 3);
 }
 
-test "environment define" {
+test "environment defineMut" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
 
-    const id = "t";
+    const id = "a";
     try expect(e.lookup(id) == null);
     //var node = Node{ .boolean = true };
-    //e.define(id, &node);
+    //try e.defineMut(id, &node);
 
     const n2 = e.lookup("+");
     try expect(n2.?.list.len == 3);
