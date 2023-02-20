@@ -21,14 +21,14 @@ pub const Environment = struct {
     symbols: StringHashMap(*Node),
     parents: ?ArrayList(Environment),
     mutable: bool,
-    pub fn grd(allocator: Allocator) EnvironmentError!Environment {
+    pub fn makeGroundEnvironment(allocator: Allocator) EnvironmentError!Environment {
         return Environment{
             .parents = null,
             .symbols = try groundSymbols(allocator),
             .mutable = false,
         };
     }
-    pub fn std(allocator: Allocator) EnvironmentError!Environment {
+    pub fn makeStandardEnvironment(allocator: Allocator) EnvironmentError!Environment {
         var p = ArrayList(Environment).init(allocator);
         if(ground == null) return EnvironmentError.GroundNotInitialized;
         try p.append(ground.?);
@@ -69,8 +69,8 @@ pub const Environment = struct {
     }
 };
 
-pub fn initGround(allocator: Allocator) EnvironmentError!void {
-    ground = try Environment.grd(allocator);
+pub fn init(allocator: Allocator) EnvironmentError!void {
+    ground = try Environment.makeGroundEnvironment(allocator);
 }
 
 fn groundSymbols(allocator: Allocator) Allocator.Error!StringHashMap(*Node) {
@@ -88,8 +88,8 @@ pub var add = Node {
 };
 
 pub fn testStdEnv() EnvironmentError!Environment {
-    ground = try Environment.grd(std.testing.allocator);
-    return try Environment.std(std.testing.allocator);
+    ground = try Environment.makeGroundEnvironment(std.testing.allocator);
+    return try Environment.makeStandardEnvironment(std.testing.allocator);
 }
 
 pub fn testDeinitEnv(environment: *Environment) void {
@@ -97,8 +97,16 @@ pub fn testDeinitEnv(environment: *Environment) void {
     environment.deinit();
 }
 
-test "lookup ground" {
-    ground = try Environment.grd(std.testing.allocator);
+test "ground defineMut" {
+    ground = try Environment.makeGroundEnvironment(std.testing.allocator);
+    defer ground.?.deinit();
+
+    var node = Node{ .int = 2077 };
+    try expectError(EnvironmentError.EnvironmentIsImmutable, ground.?.defineMut("a", &node));
+}
+
+test "ground lookup" {
+    ground = try Environment.makeGroundEnvironment(std.testing.allocator);
     defer ground.?.deinit();
 
     try expectError(EnvironmentError.SymbolNotBound, ground.?.lookup("-"));
