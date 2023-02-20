@@ -60,8 +60,9 @@ pub const Environment = struct {
         }
         if(self.parents != null) {
             for(self.parents.?.items) |parent| {
-                const result = parent.symbols.get(identifier);
-                if(result != null) return result.?;
+                var p = parent;
+                const result = p.lookup(identifier);
+                if(result != EnvironmentError.SymbolNotBound) return result;
             }
         }
         return EnvironmentError.SymbolNotBound;
