@@ -26,10 +26,11 @@ pub fn build(b: *Build) void {
     const run_cmd = b.addSystemCommand(&[_][]const u8{
         "qemu-system-x86_64",
         "--enable-kvm",
-        "-bios", "/usr/share/edk2/ovmf/OVMF_CODE.fd",
+        "-drive", "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd",
+        "-drive", "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_VARS.fd",
         "-kernel", "efi/boot/bootx64.efi",
         "-hdd", "fat:rw:.",
-        "-serial", "stdio",
+        // "-serial", "stdio",
     });
     run_cmd.step.dependOn(b.getInstallStep());
 
