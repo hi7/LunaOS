@@ -4,15 +4,17 @@ const ast = @import("ast.zig");
 const Node = ast.Node;
 const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
+const expectError = std.testing.expectError;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
 var ground: ?Environment = null;
 
-const EnvironmentError = error{ 
+pub const EnvironmentError = error{ 
     EnvironmentIsImmutable,
     OutOfMemory,
     GroundNotInitialized,
+    SymbolNotBound,
 };
 
 pub const Environment = struct {
@@ -47,25 +49,22 @@ pub const Environment = struct {
         self.symbols.deinit();
         if(self.parents != null) self.parents.?.deinit();
     }
-    pub fn defineMut(self: Environment, identifier: []const u8, node: *Node) EnvironmentError!void {
+    pub fn defineMut(self: *Environment, identifier: []const u8, node: *Node) EnvironmentError!void {
         if(!self.mutable) return EnvironmentError.EnvironmentIsImmutable;
-        var s = self.symbols;
-        try s.put(identifier, node);
+        try self.symbols.put(identifier, node);
     }
-    pub fn lookup(self: Environment, identifier: []const u8) ?*Node {
-        var s = self.symbols;
-        if(s.count() > 0) {
-            const local = s.get(identifier);
-            if(local != null) return local;
+    pub fn lookup(self: *Environment, identifier: []const u8) error{SymbolNotBound}!*Node {
+        if(self.symbols.count() > 0) {
+            const local = self.symbols.get(identifier);
+            if(local != null) return local.?;
         }
-        var p = self.parents;
-        if(p != null) {
-            for(p.?.items) |parent| {
-                const result = parent.lookup(identifier);
-                if(result != null) return result;
+        if(self.parents != null) {
+            for(self.parents.?.items) |parent| {
+                const result = parent.symbols.get(identifier);
+                if(result != null) return result.?;
             }
         }
-        return null;
+        return EnvironmentError.SymbolNotBound;
     }
 };
 
@@ -101,27 +100,33 @@ test "lookup ground" {
     ground = try Environment.grd(std.testing.allocator);
     defer ground.?.deinit();
 
-    try expect(ground.?.lookup("-") == null);
-    const n2 = ground.?.lookup("+");
-    try expect(n2.?.list.len == 3);
+    try expectError(EnvironmentError.SymbolNotBound, ground.?.lookup("-"));
+    const n = try ground.?.lookup("+");
+    try expect(n.list.len == 3);
 }
 
 test "standard environment lookup" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
 
-    try expect(e.lookup("-") == null);
-    const n2 = e.lookup("+");
-    try expect(n2.?.list.len == 3);
+    try expectError(EnvironmentError.SymbolNotBound, e.lookup("-"));
+    const n = try e.lookup("+");
+    try expect(n.list.len == 3);
 }
 
 test "environment lookup" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
 
-    try expect(e.lookup("-") == null);
-    const n2 = e.lookup("+");
-    try expect(n2.?.list.len == 3);
+    try expectError(EnvironmentError.SymbolNotBound, e.lookup("-"));
+    const n = try e.lookup("+");
+    try expect(n.list.len == 3);
+}
+
+test "environment defineMut error" {
+    var e = try testStdEnv();
+    defer testDeinitEnv(&e);
+    try expectError(EnvironmentError.SymbolNotBound, e.lookup("a"));
 }
 
 test "environment defineMut" {
@@ -129,10 +134,10 @@ test "environment defineMut" {
     defer testDeinitEnv(&e);
 
     const id = "a";
-    try expect(e.lookup(id) == null);
-    //var node = Node{ .boolean = true };
-    //try e.defineMut(id, &node);
+    try expectError(EnvironmentError.SymbolNotBound, e.lookup("a"));
+    var node = Node{ .boolean = true };
+    try e.defineMut(id, &node);
 
-    const n2 = e.lookup("+");
-    try expect(n2.?.list.len == 3);
+    const a = try e.lookup("a");
+    try expect(a.boolean == true);
 }

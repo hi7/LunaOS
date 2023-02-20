@@ -3,22 +3,18 @@ const ast = @import("ast.zig");
 const Node = ast.Node;
 const env = @import("env.zig");
 const Environment = env.Environment;
+const EnvironmentError = env.EnvironmentError;
 const testStdEnv = env.testStdEnv;
 const testDeinitEnv = env.testDeinitEnv;
 
-const EvalError = error {
-    SymbolNotBound,
-};
-
-pub fn eval(node: *Node, environment: Environment) EvalError!*Node {
+pub fn eval(node: *Node, environment: *Environment) EnvironmentError!*Node {
     return switch(node.*) {
         .boolean => node,
         .int => node,
         .float => node,
         .string => node,
         .symbol => |symbol| {
-            var result = environment.lookup(symbol);
-            return if(result == null) error.SymbolNotBound else result.?;
+            return try environment.lookup(symbol);
         },
         .list => node, //|list| {
             //for(list) |n, o| {
@@ -33,7 +29,7 @@ test "eval bool" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .boolean = false, };
-    const en = try eval(&n, e);
+    const en = try eval(&n, &e);
     try std.testing.expectEqual(false, en.boolean );
 }
 
@@ -41,7 +37,7 @@ test "eval int" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .int = 42, };
-    const en = try eval(&n, e);
+    const en = try eval(&n, &e);
     try std.testing.expectEqual(@as(i64, 42), en.int);
 }
 
@@ -49,7 +45,7 @@ test "eval float" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .float = 3.141, };
-    const en = try eval(&n, e);
+    const en = try eval(&n, &e);
     try std.testing.expectEqual(@as(f64, 3.141), en.float);
 }
 
@@ -57,7 +53,7 @@ test "eval string" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .string = "a text", };
-    const en = try eval(&n, e);
+    const en = try eval(&n, &e);
     try std.testing.expectEqualSlices(u8, "a text", en.string);
 }
 
@@ -65,14 +61,14 @@ test "eval symbol not found" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .symbol = "-", };
-    try std.testing.expectError(error.SymbolNotBound, eval(&n, e));
+    try std.testing.expectError(error.SymbolNotBound, eval(&n, &e));
 }
 
 test "eval symbol" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var n = Node { .symbol = "+", };
-    try std.testing.expectEqual(&env.add, try eval(&n, e));
+    try std.testing.expectEqual(&env.add, try eval(&n, &e));
 }
 
 test "eval list" {
@@ -84,6 +80,6 @@ test "eval list" {
     };
     var n = Node { .list = l[0..], };
     // TODO operate & apply
-    const en = try eval(&n, e);
+    const en = try eval(&n, &e);
     try std.testing.expectEqualSlices(Node, l[0..], en.list);
 }

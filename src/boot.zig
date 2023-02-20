@@ -23,14 +23,19 @@ pub fn main() void {
     };
     defer e.deinit();
 
-    printAst(e, &buf, con_out);
+    printAst(&e, &buf, con_out);
 
     fin();
 }
 
-fn printAst(environment: Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+fn printAst(environment: *Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
     var buffer = buf;
-    const node = lookup(environment, buffer, "+", con_out).?;
+    var node = environment.lookup("+") catch |err| {
+        if(err == env.EnvironmentError.SymbolNotBound) {
+            print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{"+"}, con_out);
+        }
+        return;
+    };
     const len: usize = ast.writeBuf(buffer, node, 0) catch |err| {
         print.handleBufPrintError(err, con_out);
         return;
@@ -41,14 +46,6 @@ fn printAst(environment: Environment, buf: []u8, con_out: *SimpleTextOutputProto
 fn printHeader(con_out: *SimpleTextOutputProtocol) void {
     _ = con_out.reset(false);
     _ = con_out.outputString(print.L("LunaOS\r\n\n"));
-}
-
-fn lookup(environment: Environment, buf: []u8, identifier: []const u8, con_out: *SimpleTextOutputProtocol) ?*Node {
-    var result = environment.lookup(identifier);
-    if(result == null) {
-        print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{identifier}, con_out);
-    }
-    return result;
 }
 
 fn fin() void {
