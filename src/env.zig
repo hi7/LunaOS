@@ -5,6 +5,7 @@ const Node = ast.Node;
 const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectError = std.testing.expectError;
+const lowerString = std.ascii.lowerString;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
@@ -17,6 +18,8 @@ pub const EnvironmentError = error{
     SymbolNotBound,
 };
 
+
+var buf: [1024]u8 = undefined;
 pub const Environment = struct {
     symbols: StringHashMap(*Node),
     parents: ?ArrayList(Environment),
@@ -49,19 +52,19 @@ pub const Environment = struct {
         self.symbols.deinit();
         if(self.parents != null) self.parents.?.deinit();
     }
-    pub fn defineMut(self: *Environment, identifier: []const u8, node: *Node) EnvironmentError!void {
+    pub fn defineMut(self: *Environment, id: []const u8, node: *Node) EnvironmentError!void {
         if(!self.mutable) return EnvironmentError.EnvironmentIsImmutable;
-        try self.symbols.put(identifier, node);
+        try self.symbols.put(lowerString(&buf, id), node);
     }
-    pub fn lookup(self: *Environment, identifier: []const u8) error{SymbolNotBound}!*Node {
+    pub fn lookup(self: *Environment, id: []const u8) error{SymbolNotBound}!*Node {
         if(self.symbols.count() > 0) {
-            const local = self.symbols.get(identifier);
+            const local = self.symbols.get(lowerString(&buf, id));
             if(local != null) return local.?;
         }
         if(self.parents != null) {
             for(self.parents.?.items) |parent| {
                 var p = parent;
-                const result = p.lookup(identifier);
+                const result = p.lookup(id);
                 if(result != EnvironmentError.SymbolNotBound) return result;
             }
         }
@@ -142,11 +145,19 @@ test "environment defineMut" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
 
-    const id = "a";
+    const idA = "a";
     try expectError(EnvironmentError.SymbolNotBound, e.lookup("a"));
-    var node = Node{ .boolean = true };
-    try e.defineMut(id, &node);
+    var na = Node{ .boolean = true };
+    try e.defineMut(idA, &na);
 
-    const a = try e.lookup("a");
+    const a = try e.lookup("A");
     try expect(a.boolean == true);
+
+    const idB = "B";
+    try expectError(EnvironmentError.SymbolNotBound, e.lookup("b"));
+    var nb = Node{ .boolean = false };
+    try e.defineMut(idB, &nb);
+
+    const b = try e.lookup("b");
+    try expect(b.boolean == false);
 }
