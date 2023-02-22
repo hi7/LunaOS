@@ -59,10 +59,6 @@ pub fn eval(node: *Node, e: *Environment) EvalError!Node {
     };
 }
 
-fn add(comptime T: type, a: T, b: T) T {
-    return a + b;
-}
-
 fn sub(comptime T: type, a: T, b: T) T {
     return a - b;
 }
