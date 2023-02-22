@@ -7,6 +7,7 @@ const env = @import("env.zig");
 const Environment = env.Environment;
 const ast = @import("ast.zig");
 const Node = ast.Node;
+const eval = @import("eval.zig").eval;
 
 pub fn main() void {
     const con_out = uefi.system_table.con_out.?;
@@ -23,24 +24,36 @@ pub fn main() void {
     };
     defer e.deinit();
 
-    printAst(&e, &buf, con_out);
+    var call = [_]Node{
+        Node { .symbol = "+", },
+        Node { .int32 = 123, },
+        Node { .int32 = 456, },
+        Node { .int32 = 789, },
+    };
+    var node = Node { .list = call[0..] };
+    printAst(&node, &e, &buf, con_out);
+    print.puts(" => ", con_out);
+    printEval(&node, &e, &buf, con_out);
 
     fin();
 }
 
-fn printAst(environment: *Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+fn printAst(node: *Node, _: *Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
     var buffer = buf;
-    var node = environment.lookup("+") catch |err| {
-        if(err == env.EnvironmentError.SymbolNotBound) {
-            print.printf(buf, "Symbol {s} is not bound in environment\r\n", .{"+"}, con_out);
-        }
-        return;
-    };
-    const len: usize = ast.writeBuf(buffer, node, 0) catch |err| {
+
+    const len: usize = ast.writeBuf(false, buffer, node, 0) catch |err| {
         print.handleBufPrintError(err, con_out);
         return;
     };
     print.puts(buf[0..len], con_out);
+}
+
+fn printEval(node: *Node, e: *Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
+    var result = eval(node, e) catch |err| {
+        print.printf(buf, "eval error: {}\r\n", .{err}, con_out);
+        return;
+    };
+    printAst(&result, e, buf, con_out);
 }
 
 fn printHeader(con_out: *SimpleTextOutputProtocol) void {

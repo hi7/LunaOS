@@ -18,7 +18,6 @@ pub const EnvironmentError = error{
     SymbolNotBound,
 };
 
-
 var buf: [1024]u8 = undefined;
 pub const Environment = struct {
     symbols: StringHashMap(*Node),
@@ -76,19 +75,12 @@ pub fn init(allocator: Allocator) EnvironmentError!void {
     ground = try Environment.makeGroundEnvironment(allocator);
 }
 
+pub var testNode = Node{ .symbol = "test" };
 fn groundSymbols(allocator: Allocator) Allocator.Error!StringHashMap(*Node) {
     var symbols = std.StringHashMap(*Node).init(allocator);
-    try symbols.put("+", &add);
+    try symbols.put("test", &testNode);
     return symbols;
 }
-
-pub var add = Node { 
-    .list = &[_]Node {  
-        Node{ .symbol = "+"},
-        Node{ .int = 10},
-        Node{ .int = 32 },
-    }
-};
 
 pub fn testStdEnv() EnvironmentError!Environment {
     ground = try Environment.makeGroundEnvironment(std.testing.allocator);
@@ -104,7 +96,7 @@ test "ground defineMut" {
     ground = try Environment.makeGroundEnvironment(std.testing.allocator);
     defer ground.?.deinit();
 
-    var node = Node{ .int = 2077 };
+    var node = Node{ .int16 = 2077 };
     try expectError(EnvironmentError.EnvironmentIsImmutable, ground.?.defineMut("a", &node));
 }
 
@@ -113,8 +105,8 @@ test "ground lookup" {
     defer ground.?.deinit();
 
     try expectError(EnvironmentError.SymbolNotBound, ground.?.lookup("-"));
-    const n = try ground.?.lookup("+");
-    try expect(n.list.len == 3);
+    const n = try ground.?.lookup("test");
+    try std.testing.expectEqual(testNode, n.*);
 }
 
 test "standard environment lookup" {
@@ -122,17 +114,8 @@ test "standard environment lookup" {
     defer testDeinitEnv(&e);
 
     try expectError(EnvironmentError.SymbolNotBound, e.lookup("-"));
-    const n = try e.lookup("+");
-    try expect(n.list.len == 3);
-}
-
-test "environment lookup" {
-    var e = try testStdEnv();
-    defer testDeinitEnv(&e);
-
-    try expectError(EnvironmentError.SymbolNotBound, e.lookup("-"));
-    const n = try e.lookup("+");
-    try expect(n.list.len == 3);
+    //const n = try e.lookup("+");
+    //try expect(n.list.len == 3);
 }
 
 test "environment defineMut error" {
