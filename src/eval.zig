@@ -196,7 +196,7 @@ test "eval bool" {
 test "eval int" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
-    var n = Node { .int8 = 42, };
+    var n = Node { .int8 = 42 };
     const en = try eval(&n, &e);
     try expectEqual(@as(i8, 42), en.int8);
 }
@@ -212,14 +212,14 @@ test "eval float" {
 test "eval symbol not bound" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
-    var n = Node { .symbol = "-", };
+    var n = Node { .symbol = "-" };
     try expectError(error.SymbolNotBound, eval(&n, &e));
 }
 
 test "eval symbol" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
-    var n = Node { .symbol = "test", };
+    var n = Node { .symbol = "test" };
     try expectEqual(env.testNode, try eval(&n, &e));
 }
 
@@ -227,10 +227,10 @@ test "eval list no symbol" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var l = [_]Node{
-        Node { .boolean = true, },
-        Node { .int8 = 77, },
+        Node { .boolean = true },
+        Node { .int8 = 77 },
     };
-    var n = Node { .list = l[0..], };
+    var n = Node { .list = l[0..] };
     try expectError(EvalError.SymbolAtFirstPositionExpected, eval(&n, &e));
 }
 
@@ -238,9 +238,9 @@ test "eval call type missmatch" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var l = [_]Node{
-        Node { .symbol = "+", },
-        Node { .int16 = 7, },
-        Node { .int32 = 2, },
+        Node { .symbol = "+" },
+        Node { .int16 = 7 },
+        Node { .int32 = 2 },
     };
     var n = Node { .list = l[0..], };
     try expectError(EvalError.Int16Expected, eval(&n, &e));
@@ -250,9 +250,9 @@ test "eval call add 2x int8" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var l = [_]Node{
-        Node { .symbol = "+", },
-        Node { .int8 = 77, },
-        Node { .int8 = 22, },
+        Node { .symbol = "+" },
+        Node { .int8 = 77 },
+        Node { .int8 = 22 },
     };
     var n = Node { .list = l[0..], };
     try expectEqual(Node{ .int8 = 99 }, try eval(&n, &e));
@@ -262,10 +262,10 @@ test "eval call add 3x int8" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var l = [_]Node{
-        Node { .symbol = "+", },
-        Node { .int8 = 11, },
-        Node { .int8 = 22, },
-        Node { .int8 = 33, },
+        Node { .symbol = "+" },
+        Node { .int8 = 11 },
+        Node { .int8 = 22 },
+        Node { .int8 = 33 },
     };
     var n = Node { .list = l[0..], };
     try expectEqual(Node{ .int8 = 66 }, try eval(&n, &e));
@@ -287,9 +287,9 @@ test "eval call add float16" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var l = [_]Node{
-        Node { .symbol = "+", },
-        Node { .float16 = 7.7, },
-        Node { .float16 = 2.2, },
+        Node { .symbol = "+" },
+        Node { .float16 = 7.7 },
+        Node { .float16 = 2.2 },
     };
     var n = Node { .list = l[0..], };
     try expectEqual(Node{ .float16 = 9.9 }, try eval(&n, &e));
@@ -299,12 +299,12 @@ test "eval call add list int16" {
     var e = try testStdEnv();
     defer testDeinitEnv(&e);
     var i = [_]Node{
-        Node { .int16 = 11, },
-        Node { .int16 = 22, },
-        Node { .int16 = 33, },
+        Node { .int16 = 11 },
+        Node { .int16 = 22 },
+        Node { .int16 = 33 },
     };
     var l = [_]Node{
-        Node { .symbol = "+", },
+        Node { .symbol = "+" },
         Node { .list = &i },
     };
     var n = Node { .list = l[0..], };
@@ -325,7 +325,7 @@ test "eval call add lists float16" {
         Node { .float16 = 666.0 },
     };
     var l = [_]Node{
-        Node { .symbol = "+", },
+        Node { .symbol = "+" },
         Node { .list = &as },
         Node { .list = &bs },
     };
