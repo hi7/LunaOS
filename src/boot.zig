@@ -1,8 +1,10 @@
 const std = @import("std");
 const uefi = std.os.uefi;
+const Status = uefi.Status;
 const unicode = std.unicode;
 const print = @import("print.zig");
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
+const BlockIoProtocol = uefi.protocols.BlockIoProtocol;
 const env = @import("env.zig");
 const Environment = env.Environment;
 const ast = @import("ast.zig");
@@ -10,10 +12,46 @@ const Node = ast.Node;
 const eval = @import("eval.zig").eval;
 
 pub fn main() void {
+    var buf: [1024]u8 = undefined;
+    const boot_services = uefi.system_table.boot_services.?;
+    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
     const con_out = uefi.system_table.con_out.?;
-    printHeader(con_out);
 
-    var buf: [256]u8 = undefined;
+    printHeader(con_out);
+    var protocol: ?*anyopaque = undefined;
+
+    const statusProtocol = boot_services.locateProtocol(&BlockIoProtocol.guid, null, &protocol);
+    if(statusProtocol != Status.Success) {
+        print.puts("Block IO Protocol location failed!\r\n", con_out);
+    }
+
+    var handleCount: usize = undefined;
+    var handles: [*]uefi.Handle = undefined;
+    const ByProtocol = uefi.tables.LocateSearchType.ByProtocol;
+    const statusHandle = boot_services.locateHandleBuffer(ByProtocol, &BlockIoProtocol.guid, null, &handleCount, &handles);
+    if(statusHandle == Status.Success) {
+        if(handleCount > 0) {
+            print.printf(&buf, "handle: {}\r\n", .{handles[0]}, con_out);
+
+            var entry_count: usize = undefined;
+            var entry_buffer: [*]uefi.tables.ProtocolInformationEntry = undefined;
+            var statusInfo = boot_services.openProtocolInformation(handles[0], &BlockIoProtocol.guid, &entry_buffer, &entry_count);
+            if(statusInfo == Status.Success) {
+                if(entry_count > 0) {
+                    print.printf(&buf, "Info: {}\r\n", .{entry_buffer[0]}, con_out);
+                } else {
+                    print.puts("0 entries!\r\n", con_out);
+                }
+                //var blockIo = boot_services.openProtocolSt(boot_services, protocol, buffer[0]);
+                //blockIo.readBlocks();
+            } else {
+                print.puts("Block IO Protocol open Info failed!\r\n", con_out);
+            }
+        }
+    } else {
+        print.puts("Block IO Protocol Handle NOT found!!!\r\n", con_out);
+    }
+
     env.init(std.os.uefi.pool_allocator) catch |err| {
         print.printf(&buf, "environment init error: {}\r\n", .{err}, con_out);
         return;
@@ -32,7 +70,9 @@ pub fn main() void {
     };
     var node = Node { .list = call[0..] };
     printAst(&node, &e, &buf, con_out);
+    _ = boot_services.stall(1_000_000);
     print.puts(" => ", con_out);
+    _ = boot_services.stall(1_000_000);
     printEval(&node, &e, &buf, con_out);
 
     fin();
@@ -62,8 +102,5 @@ fn printHeader(con_out: *SimpleTextOutputProtocol) void {
 }
 
 fn fin() void {
-    const boot_services = uefi.system_table.boot_services.?;
-    _ = boot_services.setWatchdogTimer(0, 0, 0, null);
-    //_ = boot_services.stall(5_000_000);
     while (true) {}
 }
