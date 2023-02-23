@@ -18,10 +18,11 @@ pub fn main() void {
     const con_out = uefi.system_table.con_out.?;
 
     printHeader(con_out);
-    var protocol: ?*anyopaque = undefined;
 
-    const statusProtocol = boot_services.locateProtocol(&BlockIoProtocol.guid, null, &protocol);
-    if(statusProtocol != Status.Success) {
+    var blockIoProtocol: ?*BlockIoProtocol = undefined;
+    if(boot_services.locateProtocol(&BlockIoProtocol.guid, null, @ptrCast(*?*anyopaque, &blockIoProtocol)) == Status.Success) {
+        print.printf(&buf, "blockIoProtocol: {*}\r\n", .{blockIoProtocol}, con_out);
+    } else {
         print.puts("Block IO Protocol location failed!\r\n", con_out);
     }
 
