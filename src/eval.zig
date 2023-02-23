@@ -49,7 +49,12 @@ pub fn eval(node: *Node, e: *Environment) EvalError!Node {
 
             var params = list[1..];
             for(params) |expr, i| {
-                if(i > 0 and expr == .symbol and expr.symbol[0] != '$') {
+                if(expr == .list) {
+                    for(expr.list) |ex, j| {
+                        var vex = ex;
+                        expr.list[j] = try eval(&vex, e);
+                    }
+                } else {
                     var vexpr = expr;
                     params[i] = try eval(&vexpr, e);
                 }
@@ -85,7 +90,6 @@ fn neutralElement(node: Node) Node {
         .list => neutralElement(node.list[0]),
     };
 }
-
 
 var buf: [1024]u8 = undefined;
 fn applyAdd(params: []Node) EvalError!Node {
