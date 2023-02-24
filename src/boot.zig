@@ -33,7 +33,7 @@ pub fn main() void {
                     return;
                 };
                 var data: [512]u8 = undefined;
-                const lba: u64 = 10;
+                const lba: u64 = 1;
                 if(blockIo.readBlocks(blockIoProtocol.?.media.media_id, lba, 512, &data) == Status.Success) {
                     print.printf(&buf, "block {d}: {s}\r\n", .{lba, std.fmt.fmtSliceHexLower(&data)}, con_out);
                 } else {
