@@ -12,7 +12,7 @@ const Node = ast.Node;
 const eval = @import("eval.zig").eval;
 
 pub fn main() void {
-    var buf: [4096]u8 = undefined;
+    var buf: [1024]u8 = undefined;
     const boot_services = uefi.system_table.boot_services.?;
     _ = boot_services.setWatchdogTimer(0, 0, 0, null);
     const con_out = uefi.system_table.con_out.?;
@@ -33,9 +33,10 @@ pub fn main() void {
                     return;
                 };
                 var data: [512]u8 = undefined;
-                const lba: u64 = 1;
+                const lba: u64 = 10;
                 if(blockIo.readBlocks(blockIoProtocol.?.media.media_id, lba, 512, &data) == Status.Success) {
-                    print.printf(&buf, "block {d}: {s}\r\n", .{lba, std.fmt.fmtSliceHexLower(&data)}, con_out);
+                    print.puts("Block at LBA 10\r\n", con_out);
+                    print.printf(&buf, "{s}", .{std.fmt.fmtSliceHexLower(data[0..512])}, con_out);
                 } else {
                     print.puts("Block IO read failed!\r\n", con_out);
                 }
@@ -65,6 +66,7 @@ pub fn main() void {
         Node { .int32 = 789, },
     };
     var node = Node { .list = call[0..] };
+    print.puts("\r\n", con_out);
     printAst(&node, &e, &buf, con_out);
     _ = boot_services.stall(1_000_000);
     print.puts(" => ", con_out);
