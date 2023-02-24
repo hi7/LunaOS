@@ -17,6 +17,12 @@ pub const Node = union(enum) {
     list: []Node,
 };
 
+pub const EnvNode = struct {
+    nodeLba: ?u64,
+    x86_64Lba: ?u64,
+    node: ?Node,
+};
+
 pub fn writeBuf(comptime ascii: bool, buf: []u8, node: *Node, i: usize) error{NoSpaceLeft}!usize {
     var offset: usize = i;
     switch(node.*) {

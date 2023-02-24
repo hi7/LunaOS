@@ -3,6 +3,7 @@ const uefi = std.os.uefi;
 const Status = uefi.Status;
 const unicode = std.unicode;
 const print = @import("print.zig");
+const BootServices = uefi.tables.BootServices;
 const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 const BlockIoProtocol = uefi.protocols.BlockIoProtocol;
 const env = @import("env.zig");
@@ -10,6 +11,7 @@ const Environment = env.Environment;
 const ast = @import("ast.zig");
 const Node = ast.Node;
 const eval = @import("eval.zig").eval;
+const io = @import("io.zig");
 
 pub fn main() void {
     var buf: [1024]u8 = undefined;
@@ -18,45 +20,11 @@ pub fn main() void {
     const con_out = uefi.system_table.con_out.?;
 
     printHeader(con_out);
+    readBlock(&buf, boot_services, con_out);
 
-    var blockIoProtocol: ?*BlockIoProtocol = undefined;
-    if(boot_services.locateProtocol(&BlockIoProtocol.guid, null, @ptrCast(*?*anyopaque, &blockIoProtocol)) == Status.Success) {
-        print.printf(&buf, "IO block size: {d}\r\n", .{blockIoProtocol.?.media.block_size}, con_out);
-        var handleCount: usize = undefined;
-        var handles: [*]uefi.Handle = undefined;
-        const ByProtocol = uefi.tables.LocateSearchType.ByProtocol;
-        const statusHandle = boot_services.locateHandleBuffer(ByProtocol, &BlockIoProtocol.guid, null, &handleCount, &handles);
-        if(statusHandle == Status.Success) {
-            if(handleCount > 0) {
-                var blockIo = boot_services.openProtocolSt(BlockIoProtocol, handles[0]) catch |err| {
-                    print.printf(&buf, "openProtocolSt BlockIoProtocol error: {}\r\n", .{err}, con_out);
-                    return;
-                };
-                var data: [512]u8 = undefined;
-                const lba: u64 = 10;
-                if(blockIo.readBlocks(blockIoProtocol.?.media.media_id, lba, 512, &data) == Status.Success) {
-                    print.puts("Block at LBA 10\r\n", con_out);
-                    print.printf(&buf, "{s}", .{std.fmt.fmtSliceHexLower(data[0..512])}, con_out);
-                } else {
-                    print.puts("Block IO read failed!\r\n", con_out);
-                }
-            }
-        } else {
-            print.puts("Block IO Protocol Handle NOT found!\r\n", con_out);
-        }
-    } else {
-        print.puts("Block IO Protocol location failed!\r\n", con_out);
-    }
-
-
-    env.init(std.os.uefi.pool_allocator) catch |err| {
-        print.printf(&buf, "environment init error: {}\r\n", .{err}, con_out);
-        return;
-    };
-    var e = Environment.makeStandardEnvironment(std.os.uefi.pool_allocator) catch |err| {
-        print.printf(&buf, "make standard environment error: {}\r\n", .{err}, con_out);
-        return;
-    };
+    const environment = envInit(&buf, con_out);
+    if(environment == null) return;
+    var e = environment.?;
     defer e.deinit();
 
     var call = [_]Node{
@@ -74,6 +42,38 @@ pub fn main() void {
     printEval(&node, &e, &buf, con_out);
 
     fin();
+}
+
+fn envInit(buf: []u8, con_out: *SimpleTextOutputProtocol) ?Environment {
+    var buffer = buf;
+    env.init(std.os.uefi.pool_allocator) catch |err| {
+        print.printf(buffer, "environment init error: {}\r\n", .{err}, con_out);
+        return null;
+    };
+    return Environment.makeStandardEnvironment(std.os.uefi.pool_allocator) catch |err| {
+        print.printf(buffer, "make standard environment error: {}\r\n", .{err}, con_out);
+        return null;
+    };
+}
+
+fn readBlock(buf: []u8, boot_services: *BootServices, con_out: *SimpleTextOutputProtocol) void {
+    var buffer = buf;
+    const blockSize = io.init(boot_services) catch |err| {
+        print.printf(buffer, "block io init error: {}\r\n", .{err}, con_out);
+        return;
+    };
+    if(blockSize <= 512){
+        var data: [512]u8 = undefined;
+        io.readBlock(io.minLba, 512, &data) catch |err| {
+            print.printf(buffer, "environment init error: {}\r\n", .{err}, con_out);
+            return;
+        };
+        print.puts("block io at lba 10: ", con_out);
+        print.printf(buffer, "{s}", .{std.fmt.fmtSliceHexLower(data[0..512])}, con_out);
+    } else {
+        print.printf(buffer, "block size > 512: {d}\r\n", .{blockSize}, con_out);
+        return;
+    }
 }
 
 fn printAst(node: *Node, _: *Environment, buf: []u8, con_out: *SimpleTextOutputProtocol) void {
