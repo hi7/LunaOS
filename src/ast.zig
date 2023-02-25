@@ -6,9 +6,13 @@ const ArrayList = std.ArrayList;
 
 pub const Node = union(enum) {
     boolean: bool,
+    intU8: u8,
     int8: i8,
+    intU16: i16,
     int16: i16,
+    intU32: i32,
     int32: i32,
+    intU64: i64,
     int64: i64,
     float16: f16,
     float32: f32,
@@ -27,9 +31,13 @@ pub fn writeBuf(comptime ascii: bool, buf: []u8, node: *Node, i: usize) error{No
     var offset: usize = i;
     switch(node.*) {
         .boolean => |boolean| offset += try bufPrintLen(buf[offset..], "{s}", .{ if(boolean) "#t" else "#f"}),
-        .int8 => |int| offset += try bufPrintLen(buf[offset..], if(ascii) "{c}" else "{d}", .{@bitCast(u8, int)}),
+        .intU8 => |int| offset += try bufPrintLen(buf[offset..], if(ascii) "{c}" else "{d}", .{int}),
+        .int8 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
+        .intU16 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
         .int16 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
+        .intU32 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
         .int32 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
+        .intU64 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
         .int64 => |int| offset += try bufPrintLen(buf[offset..], "{d}", .{int}),
         .float16 => |float| offset += try bufPrintLen(buf[offset..], "{d}", .{float}),
         .float32 => |float| offset += try bufPrintLen(buf[offset..], "{d}", .{float}),
@@ -93,9 +101,9 @@ test "write ast float 308 digits" {
 
 test "write ast string abc" {
     var list = [_]Node{ 
-        Node{ .int8 = 'a' },
-        Node{ .int8 = 'b' },
-        Node{ .int8 = 'c' },
+        Node{ .intU8 = 'a' },
+        Node{ .intU8 = 'b' },
+        Node{ .intU8 = 'c' },
     };
     var node = Node{ .list = &list};
     try testNode(true, &node, "abc");

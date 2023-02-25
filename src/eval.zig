@@ -18,9 +18,13 @@ pub const EvalError = error {
     SymbolNotBound,
     BooleanExpected,
     NoSpaceLeft,
+    IntU8Expected,
     Int8Expected,
+    IntU16Expected,
     Int16Expected,
+    IntU32Expected,
     Int32Expected,
+    IntU64Expected,
     Int64Expected,
     Float16Expected,
     Float32Expected,
@@ -32,9 +36,13 @@ pub const EvalError = error {
 pub fn eval(node: *Node, e: *Environment) EvalError!Node {
     return switch(node.*) {
         .boolean => node.*,
+        .intU8 => node.*,
         .int8 => node.*,
+        .intU16 => node.*,
         .int16 => node.*,
+        .intU32 => node.*,
         .int32 => node.*,
+        .intU64 => node.*,
         .int64 => node.*,
         .float16 => node.*,
         .float32 => node.*,
@@ -79,9 +87,13 @@ fn div(comptime T: type, a: T, b: T) T {
 fn neutralElement(node: Node) Node {
     return switch(node) {
         .boolean => Node{ .boolean = true },
+        .intU8 => Node{ .int8 = 0 },
         .int8 => Node{ .int8 = 0 },
+        .intU16 => Node{ .int16 = 0 },
         .int16 => Node{ .int16 = 0 },
+        .intU32 => Node{ .int32 = 0 },
         .int32 => Node{ .int32 = 0 },
+        .intU64 => Node{ .int64 = 0 },
         .int64 => Node{ .int64 = 0 },
         .float16 => Node{ .float16 = 0 },
         .float32 => Node{ .float32 = 0 },
@@ -102,12 +114,26 @@ fn applyAdd(params: []Node) EvalError!Node {
             }
             return Node{ .boolean = sum.boolean };
         },
+        .intU8 => {
+            for(params) |param| {
+                if(param != .intU8) return EvalError.IntU8Expected;
+                sum.intU8 = sum.intU8 + param.intU8;
+            }
+            return Node{ .intU8 = sum.intU8 };
+        },
         .int8 => {
             for(params) |param| {
                 if(param != .int8) return EvalError.Int8Expected;
                 sum.int8 = sum.int8 + param.int8;
             }
             return Node{ .int8 = sum.int8 };
+        },
+        .intU16 => {
+            for(params) |param| {
+                if(param != .intU16) return EvalError.IntU16Expected;
+                sum.intU16 = sum.intU16 + param.intU16;
+            }
+            return Node{ .intU16 = sum.intU16};
         },
         .int16 => {
             for(params) |param| {
@@ -116,12 +142,26 @@ fn applyAdd(params: []Node) EvalError!Node {
             }
             return Node{ .int16 = sum.int16};
         },
+        .intU32 => {
+            for(params) |param| {
+                if(param != .intU32) return EvalError.IntU32Expected;
+                sum.intU32 = sum.intU32 + param.intU32;
+            }
+            return Node{ .intU32 = sum.intU32};
+        },
         .int32 => {
             for(params) |param| {
                 if(param != .int32) return EvalError.Int32Expected;
                 sum.int32 = sum.int32 + param.int32;
             }
             return Node{ .int32 = sum.int32};
+        },
+        .intU64 => {
+            for(params) |param| {
+                if(param != .intU64) return EvalError.IntU64Expected;
+                sum.intU64 = sum.intU64 + param.intU64;
+            }
+            return Node{ .intU64 = sum.int64};
         },
         .int64 => {
             for(params) |param| {
