@@ -68,7 +68,7 @@ fn readBlock(buf: []u8, boot_services: *BootServices, con_out: *SimpleTextOutput
             print.printf(buffer, "environment init error: {}\r\n", .{err}, con_out);
             return;
         };
-        print.puts("block io at lba 10: ", con_out);
+        print.puts("block io at lba 20481: ", con_out);
         print.printf(buffer, "{s}", .{std.fmt.fmtSliceHexLower(data[0..512])}, con_out);
     } else {
         print.printf(buffer, "block size > 512: {d}\r\n", .{blockSize}, con_out);

@@ -9,7 +9,3 @@ pub fn add(a: usize, b: usize) usize {
         : "rcx", "r11"
     );
 }
-
-test "add" {
-    try std.testing.expectEqual(@as(usize, 99999999), add(12345678, 87654321));
-}

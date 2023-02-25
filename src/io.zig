@@ -7,14 +7,17 @@ const SimpleTextOutputProtocol = uefi.protocols.SimpleTextOutputProtocol;
 const BlockIoProtocol = uefi.protocols.BlockIoProtocol;
 const BootServices = uefi.tables.BootServices;
 
-pub const minLba: u64 = 10;
+pub const minLba: u64 = 20481;
+pub const maxLba: u64 = 15648767;
 var blockIo: *BlockIoProtocol = undefined;
 var mediaId: u32 = undefined;
 var blockSize: usize = undefined;
+
 pub const IOError = error {
     NoBlockIoProtocolFound,
     ReadBlockFailed,
 };
+
 pub fn init(boot_services: *BootServices) !usize {
     var blockIoProtocol: ?*BlockIoProtocol = undefined;
     if(boot_services.locateProtocol(&BlockIoProtocol.guid, null, @ptrCast(*?*anyopaque, &blockIoProtocol)) == Status.Success) {
