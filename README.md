@@ -1,6 +1,8 @@
 # LunaOS
 UEFI app written in Zig Version 0.11.0-dev
 
+Continued on Codeberg.org.
+
 # Build
 `zig build`
 
